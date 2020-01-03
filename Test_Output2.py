@@ -1,23 +1,3 @@
-import torch
-import torch.nn as nn
-import torch.utils.data as data
-import torch.optim as optim
-import torch.nn.functional as F
-from torch.nn import Module
-from torchvision import transforms
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-import torchvision
-import numpy as np
-import pandas as pd
-import time
-import os
-import sys
-import zipfile
-import csv
-from PIL import Image
-
 from torch.nn import Module
 import torch
 import torch.nn as nn
@@ -41,6 +21,8 @@ import csv
 from collections import OrderedDict
 from PIL import Image
 
+extracting = zipfile.ZipFile('test.zip')
+extracting.extractall()
 test_INFO = pd.read_csv("sampleSubmission1.csv")
 test_DATA= 'test'
 
@@ -149,7 +131,7 @@ class DenseNet(nn.Module):
 
         self.classification = Classification(input_channels=num_features,output_classes=num_classes)
 
-        # Official init from torch repo.
+
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
                 nn.init.kaiming_normal_(m.weight)
@@ -178,12 +160,12 @@ class testDataset(Dataset):
 
     def __getitem__(self, item):
         name = test_INFO.loc[self.index[item], 'name']
-        npz = np.load(os.path.join(test_DATA, '%s.npz' % name))
-        voxel_temp = 2*npz['voxel']/255-1
+        data = np.load(os.path.join(test_DATA, '%s.npz' % name))
+        voxel_temp = 2*data['voxel']/255-1
         voxel_temp = voxel_temp[50 - self.cropsize // 2:50 + self.cropsize // 2,
                      50 - self.cropsize // 2:50 + self.cropsize // 2,
                      50 - self.cropsize // 2:50 + self.cropsize // 2]
-        voxel = voxel_temp[np.newaxis, ...]
+        voxel = np.expand_dims(voxel, axis=0)
         return name, voxel
     
     def __len__(self):
@@ -193,6 +175,8 @@ class ToTensor(object):
     def __call__(self, sample):
 
         return torch.from_numpy(sample)
+
+
 
 def main():
     print(os.getcwd()) #获取当前工作目录路径
