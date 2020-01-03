@@ -23,8 +23,6 @@ from PIL import Image
 
 extracting = zipfile.ZipFile('test.zip')
 extracting.extractall()
-test_INFO = pd.read_csv("sampleSubmission1.csv")
-test_DATA= 'test'
 
 class FeatureBlock(nn.Sequential):
     def __init__(self, input_channels, output_channels):
@@ -131,7 +129,7 @@ class DenseNet(nn.Module):
 
         self.classification = Classification(input_channels=num_features,output_classes=num_classes)
 
-
+        # Official init from torch repo.
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
                 nn.init.kaiming_normal_(m.weight)
@@ -147,42 +145,64 @@ class DenseNet(nn.Module):
         out = F.softmax(out, dim=1)
         return out
     
-    
-    
 
-class testDataset(Dataset):
-    def __init__(self,test_INFO,test_DATA,cropsize=32, transform=None):
-        index = []
-        index += list(test_INFO.index)
-        self.index = tuple(sorted(index))
-        self.transform = transform
-        self.cropsize = cropsize
-
-    def __getitem__(self, item):
-        name = test_INFO.loc[self.index[item], 'name']
-        data = np.load(os.path.join(test_DATA, '%s.npz' % name))
-        voxel_temp = 2*data['voxel']/255-1
-        voxel_temp = voxel_temp[50 - self.cropsize // 2:50 + self.cropsize // 2,
-                     50 - self.cropsize // 2:50 + self.cropsize // 2,
-                     50 - self.cropsize // 2:50 + self.cropsize // 2]
-        voxel = np.expand_dims(voxel, axis=0)
-        return name, voxel
-    
-    def __len__(self):
-        return len(self.index)
-
-class ToTensor(object):
+def crop(array, zyx, dhw):
+    cropped = array[zyx - dhw // 2:zyx + dhw // 2,
+             zyx - dhw // 2:zyx + dhw // 2,
+             zyx - dhw // 2:zyx + dhw // 2]
+    return cropped
+   
+class Transform(object):
+    def __init__(self, size):
+        self.size = size
     def __call__(self, sample):
+        image = sample
+        image = 2*image/255-1
+        image = crop(image, 50, self.size)
+        image = image[np.newaxis, ...] 
+        return torch.from_numpy(image).float()
+             
 
-        return torch.from_numpy(sample)
+# 定义TestDataset类， 继承Dataset, 重写抽象方法：__len()__, __getitem()__
+class TestDataset(Dataset):
+
+    def __init__(self, root, names_file, crop_size=32, transform=None):
+        self.root = root
+        self.names_file = names_file
+        self.transform = transform
+        self.size = 0
+        self.crop_size = crop_size
+        self.names_list = []
+
+        if not os.path.isfile(self.names_file):
+            print(self.names_file + 'does not exist!')
+        file = open(self.names_file)
+        next(file)
+        for f in file:
+            self.names_list.append(f)
+            self.size += 1
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, idx):
+        image_path = self.names_list[idx].split(',')[0]
+        data = np.load(os.path.join(self.root, '%s.npz' % image_path))
+        voxel = data['voxel']
+
+        if self.transform:
+            voxel = self.transform(voxel)
+
+        return image_path, voxel
 
 
 
 def main():
     print(os.getcwd()) #获取当前工作目录路径
 
-    test_dataset = testDataset(test_INFO,test_DATA,cropsize=32, transform=ToTensor())
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0,drop_last=False)
+    test_dataset = TestDataset(root='test', names_file='sampleSubmission.csv',transform=Transform(32))
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=0,drop_last=True)
+
 
     File = open("Submission.csv", "w", newline='')
     csv_file = csv.writer(File)
@@ -199,9 +219,8 @@ def main():
             outputs = model(image)
             outputs=torch.softmax(outputs,1)
             csv_file.writerow([str(ID[0]), (outputs.data[0][1]).item()])
+
     File.close()
 
 if __name__ == '__main__':
    main()
-
-
