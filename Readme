@@ -2,5 +2,5 @@
 所有代码为pytorch架构，GPU运行
 model.pth为测试AUC为0.69266的模型文件；model.pkl是测试效果AUC为0.6868的模型参数文件
 Mynet.ipynb文件为训练代码文件,定义模型及训练集数据格式，训练模型并生成pth,pkl模型文件
-test.py是加载Model.pkl的测试文件，可命令行python Test_Output.py运行，要求与test.zip处于同一目录下，结果会生成一个Submission.csv文件
+test.py是加载Model.pkl的测试文件，可命令行python Test_Output.py运行，要求与test文件夹和sampleSubmission.csv处于同一目录下，结果会生成一个Submission.csv文件
 test2.py为加载model.pkl的测试文件，运行时需要配置cuda10.1版本
