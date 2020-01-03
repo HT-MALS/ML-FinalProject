@@ -21,8 +21,6 @@ import csv
 from collections import OrderedDict
 from PIL import Image
 
-extracting = zipfile.ZipFile('test.zip')
-extracting.extractall()
 
 class FeatureBlock(nn.Sequential):
     def __init__(self, input_channels, output_channels):
